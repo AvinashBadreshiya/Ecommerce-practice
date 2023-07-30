@@ -18,12 +18,12 @@ module.exports = {
 
       req.user = user;
       if (usersAllowed.length) {
-        if (req.user.roleId.name === USER_TYPE.ADMIN) return next();
-        if (usersAllowed.includes("*")) return next();
+        if (req.user.roleId.name === USER_TYPE.SUPERADMIN) return next();
         if (usersAllowed.includes(req.user.roleId.name)) return next();
+        if (usersAllowed.includes("*")) return next();
         return apiResponseponse.UNAUTHORIZED({ res, message: message.UNAUTHORIZED });
       } else {
-        if (req.user.roleId.name === USER_TYPE.ADMIN) return next();
+        if (req.user.roleId.name === USER_TYPE.SUPERADMIN) return next();
         return apiResponseponse.UNAUTHORIZED({ res, message: message.UNAUTHORIZED });
       }
     };

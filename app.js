@@ -17,7 +17,5 @@ app.use(cookieParser());
 
 app.use("/api/v1", require("./routes/index"));
 
-app.use((req, res) => apiResponse.NOT_FOUND({ res, message: "Oops! Looks like you're lost." }));
-
 app.use(errorHandler);
 module.exports = app;

@@ -2,7 +2,7 @@ const messages = require("../../json/message.json");
 const apiResponse = require("../../utils/api.response");
 const DB = require("../../models");
 const helper = require("../../utils/utils");
-const { USER_TYPE: { SUPERADMIN, USER, VENDOR } } = require("../../json/enums.json");
+const { USER_TYPE: { SUPERADMIN } } = require("../../json/enums.json");
 const validator = require("../../middleware/validator")
 const Joi = require("joi")
 
@@ -48,7 +48,7 @@ const signIn = {
     try {
       const getUser = await DB.USER.findOne({ email: req.body.email }).select("password").populate("roleId", "name")
       if (!getUser) return apiResponse.BAD_REQUEST({ res, message: messages.USER_NOT_FOUND })
-
+      
       const matchPassword = await helper.comparePassword({ password: req.body.password, hash: getUser.password })
       if (!matchPassword) return apiResponse.BAD_REQUEST({ res, message: messages.INVALID_PASSWORD })
 
@@ -66,16 +66,19 @@ const createSuperadmin = {
   handler: async () => {
     try {
       const superAdmin = await DB.USER.findOne({ email: process.env.SUPERADMIN_EMAIL })
-      const roleId = await DB.ROLE.findOne({ name: SUPERADMIN }).select("_id")
       if (superAdmin) {
         console.log("Super admin is available")
       } else {
+        let getRole = await DB.ROLE.findOne({ name: SUPERADMIN })
+        if (!getRole) {
+          getRole = await DB.ROLE.create({ name: SUPERADMIN })
+        }
         await DB.USER.create({
           name: process.env.SUPERADMIN_NAME,
           email: process.env.SUPERADMIN_EMAIL,
           phone: process.env.SUPERADMIN_PHONE,
-          password: await helper.hashPassword({ password: process.env.SUPERADMIN_PASSWORD }),
-          roleId: roleId
+          password: process.env.SUPERADMIN_PASSWORD,
+          roleId: getRole._id
         })
         console.log("Super admin created")
       }

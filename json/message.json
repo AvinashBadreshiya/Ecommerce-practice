@@ -4,20 +4,27 @@
   "UNAUTHORIZED": "Unauthorized.",
   "INTERNAL_SERVER_ERROR": "Internal server error.",
   "DUPLICATE_KEY": "Duplicate key.",
-
   "SUCCESS": "Success.",
   "FAILED": "Failed.",
   "NOT_FOUND": "Not found.",
-
   "INVALID_PASSWORD": "Invalid password.",
   "EMAIL_ALREADY_EXISTS": "Email already exists.",
   "INVALID_ROLE": "Invalid role.",
-
   "OTP_EXPIRED": "OTP expired.",
-  "INVALID_FILE": "File upload error.",
-
-  "USER_EXISTS":"User already exists.",
-  "USER_NOT_FOUND":"User not exists.",
-  "SIGNUP":"Sign up successfully",
-  "SIGNIN":"Sign in successfully"
+  "USER_EXISTS": "User already exists.",
+  "USER_NOT_FOUND": "User not exists.",
+  "SIGNUP": "Sign up successfully",
+  "SIGNIN": "Sign in successfully",
+  "PRODUCT_ADDED": "Product added successfully",
+  "PRODUCT_UPDATED": "Product updated successfully",
+  "PRODUCT_DELETED": "Product deleted successfully",
+  "PRODUCT_NOT_FOUND": "Product not found",
+  "PRODUCT_STATUS": "Product status updated successfully",
+  "PRODUCT_ADDED_TO_CART": "Product added to cart successfully",
+  "CART_NOT_FOUND": "Cart product not found",
+  "CART_REMOVE": "Cart remove successfully",
+  "CART_PRODUCT_DELETED": "Cart product deleted successfully",
+  "CART_EXISTS": "Cart product exists",
+  "INSUFFICIENT_QUANTITY": "Insufficient quantity",
+  "CART_UPDATED": "Cart product updated successfully"
 }

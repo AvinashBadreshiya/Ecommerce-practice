@@ -19,7 +19,7 @@ const createRole = {
       const role = await DB.ROLE.create(req.body);
       return apiResponse.OK({ res, message: messages.SUCCESS, data: role });
     } catch (error) {
-      return apiResponse.OK({ res, message: error.message });
+      return apiResponse.CATCH_ERROR({ res, message: error.message });
     }
   }
 
@@ -32,7 +32,7 @@ const getRole = {
       const role = await DB.ROLE.find();
       return apiResponse.OK({ res, message: messages.SUCCESS, data: role });
     } catch (error) {
-      return apiResponse.OK({ res, message: error.message });
+      return apiResponse.CATCH_ERROR({ res, message: error.message });
     }
   }
 

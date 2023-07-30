@@ -9,5 +9,10 @@
     "USER": "user",
     "VENDOR": "vendor",
     "SUPERADMIN": "superadmin"
+  },
+  "PRODUCT_STATUS": {
+    "PENDING": "pending",
+    "REJECT": "reject",
+    "APPROVE": "approve"
   }
 }

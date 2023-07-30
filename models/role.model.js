@@ -1,5 +1,4 @@
 const { Schema, model } = require("mongoose");
-
 const { USER_TYPE } = require("../json/enums.json");
 
 let roleSchema = new Schema(
