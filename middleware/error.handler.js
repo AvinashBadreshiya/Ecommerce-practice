@@ -1,6 +1,5 @@
 const apiResponse = require("../utils/api.response");
 const messages = require("../json/message.json");
-const { MulterError } = require("multer");
 const { JsonWebTokenError } = require("jsonwebtoken")
 
 module.exports = async (error, req, res, next) => {

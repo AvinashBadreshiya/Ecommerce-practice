@@ -14,5 +14,10 @@
     "PENDING": "pending",
     "REJECT": "reject",
     "APPROVE": "approve"
+  },
+  "ORDER_STATUS": {
+    "PLACED": "placed",
+    "DISPATCH": "dipatched",
+    "DELIVER": "delivered"
   }
 }

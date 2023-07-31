@@ -3,4 +3,5 @@ module.exports = {
   ROLE: require("./role.model"),
   PRODUCT: require("./product.model"),
   CART: require("./cart.model"),
+  ORDER: require("./order.model")
 };

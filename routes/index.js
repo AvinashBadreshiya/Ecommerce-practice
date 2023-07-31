@@ -6,5 +6,6 @@ app.use("/role", require("./role.routes"));
 app.use("/user", require("./user.routes"));
 app.use("/product", require("./product.routes"));
 app.use("/cart", require("./cart.routes"));
+app.use("/order", require("./order.routes"));
 
 module.exports = app;

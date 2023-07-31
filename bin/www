@@ -8,7 +8,6 @@ require("../config/db.config");
 var app = require("../app");
 var http = require("http");
 var debugServer = require("debug")("e-commerce:server");
-const { Server } = require("socket.io");
 
 /**
  * Get port from environment and store in Express.
