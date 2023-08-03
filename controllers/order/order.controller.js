@@ -9,9 +9,9 @@ const createOrder = {
 
   validate: validator({
     body: Joi.object({
-      cartId: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid Id").required()).required(),
+      cartId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid Id").required(),
       address: Joi.string().required(),
-      pincode: Joi.number().length == 6,
+      pincode: Joi.number().required(),
       city: Joi.string().required(),
       state: Joi.string().required(),
     })
@@ -19,22 +19,20 @@ const createOrder = {
 
   handler: async (req, res) => {
     try {
+      const getCart = await DB.CART.findById(req.body.cartId)
+      if (!getCart) return apiResponse.BAD_REQUEST({ res, message: messages.CART_NOT_FOUND })
 
-      for ( i = 0; i < req.body.cartId.length; i++) {
-        const element = array[i];
-        const getCart = await DB.CART.findById(req.body.cartId)
-        if (!getCart) return apiResponse.BAD_REQUEST({ res, message: messages.CART_NOT_FOUND })
-        
+      for (let i = 0; i < getCart.cart.length; i++) {
+        req.body.orderId = uuid(),
+          req.body.userId = req.user._id,
+          req.body.vendorId = getCart.cart[i].vendorId,
+          req.body.productId = getCart.cart[i].productId,
+          req.body.quantity = getCart.cart[i].quantity,
+          req.body.totalPrice = getCart.cart[i].totalPrice
+        await DB.ORDER.create(req.body)
       }
-
-      req.body.orderId = uuid()
-      req.body.userId = req.user._id
-      req.body.vendorId = getCart.vendorId
-      req.body.productId = getCart.productId
-      req.body.quantity = getCart.quantity
-      req.body.totalPrice = getCart.totalPrice
-      const newOrder = await DB.ORDER.create(req.body)
-      return apiResponse.OK({ res, message: messages.PRODUCT_ADDED_TO_CART, data: newOrder })
+      await DB.CART.findByIdAndDelete(req.body.cartId)
+      return apiResponse.OK({ res, message: messages.ORDER_SUCCESS })
     } catch (error) {
       return apiResponse.CATCH_ERROR({ res, message: error.message })
     }
@@ -42,12 +40,224 @@ const createOrder = {
 
 }
 
-const getCart = {
+const getOrderForUser = {
 
   handler: async (req, res) => {
     try {
-      const getUserCart = await DB.CART.find({ userId: req.user._id }).sort({ createdAt: -1 }).populate("productId")
-      return apiResponse.OK({ res, message: messages.SUCCESS, data: getUserCart })
+      const page = parseInt(req.query?.page) || 1
+      const limit = parseInt(req.query?.limit) || 10
+      const getUserOrder = await (await DB.ORDER.find({ userId: req.user._id })).limit(limit).skip(limit * page - limit).sort({ createdAt: -1 }).populate("productId")
+      return apiResponse.OK({ res, message: messages.SUCCESS, data: getUserOrder })
+    } catch (error) {
+      return apiResponse.CATCH_ERROR({ res, message: error.message })
+    }
+  }
+
+}
+
+const getOrderForVendor = {
+
+  validate: validator({
+    query: Joi.object({
+      orderId: Joi.string(),
+      search: Joi.string(),
+      page: Joi.string(),
+      limit: Joi.string()
+    })
+  }),
+
+  handler: async (req, res) => {
+    try {
+      const page = parseInt(req.query?.page) || 1
+      const limit = parseInt(req.query?.limit) || 10
+
+      let criteria = { vendorId: req.user._id }
+      if (req.query?.orderId) criteria = { ...criteria, orderId: req.query.orderId }
+
+      let search = {}
+      if (req.query?.search) search = {
+        $or: [
+          { "productId.company": { $regex: req.query.search, $options: "i" } },
+          { city: { $regex: req.query.search, $options: "i" } },
+          { state: { $regex: req.query.search, $options: "i" } },
+          { status: { $regex: req.query.search, $options: "i" } }
+        ]
+      }
+
+      const getVendorOrder = await DB.ORDER.aggregate([
+        {
+          $match: criteria
+        },
+        {
+          $lookup: {
+            from: "product",
+            localField: "productId",
+            foreignField: "_id",
+            as: "productId",
+          },
+        },
+        {
+          $unwind: {
+            path: "$productId",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "user",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userId",
+          },
+        },
+        {
+          $unwind: {
+            path: "$userId",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $match: search,
+        },
+        {
+          $sort: { createdAt: -1 }
+        },
+        {
+          $facet: {
+            count: [
+              {
+                $count: "_doc",
+              },
+            ],
+            data: [
+              {
+                $skip: limit * page - limit,
+              },
+              {
+                $limit: limit,
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$count",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            data: 1,
+            count: "$count._doc",
+          },
+        },
+      ])
+      return apiResponse.OK({ res, message: messages.SUCCESS, data: getVendorOrder })
+    } catch (error) {
+      return apiResponse.CATCH_ERROR({ res, message: error.message })
+    }
+  }
+
+}
+
+const getOrderForSuperAdmin = {
+
+  validate: validator({
+    query: Joi.object({
+      orderId: Joi.string(),
+      search: Joi.string(),
+      page: Joi.string(),
+      limit: Joi.string()
+    })
+  }),
+
+  handler: async (req, res) => {
+    try {
+      const page = parseInt(req.query?.page) || 1
+      const limit = parseInt(req.query?.limit) || 10
+
+      let criteria = {}
+      if (req.query?.orderId) criteria.orderId = req.query.orderId
+
+      let search = {}
+      if (req.query?.search) search = {
+        $or: [
+          { "productId.company": { $regex: req.query.search, $options: "i" } },
+          { city: { $regex: req.query.search, $options: "i" } },
+          { state: { $regex: req.query.search, $options: "i" } },
+          { status: { $regex: req.query.search, $options: "i" } }
+        ]
+      }
+
+      const getVendorOrder = await DB.ORDER.aggregate([
+        {
+          $match: criteria
+        },
+        {
+          $lookup: {
+            from: "product",
+            localField: "productId",
+            foreignField: "_id",
+            as: "productId",
+          },
+        },
+        {
+          $unwind: {
+            path: "$productId",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "user",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userId",
+          },
+        },
+        {
+          $unwind: {
+            path: "$userId",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $match: search,
+        },
+        {
+          $sort: { createdAt: -1 }
+        },
+        {
+          $facet: {
+            count: [
+              {
+                $count: "_doc",
+              },
+            ],
+            data: [
+              {
+                $skip: limit * page - limit,
+              },
+              {
+                $limit: limit,
+              },
+            ],
+          },
+        },
+        {
+          $unwind: {
+            path: "$count",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            data: 1,
+            count: "$count._doc",
+          },
+        },
+      ])
+      return apiResponse.OK({ res, message: messages.SUCCESS, data: getVendorOrder })
     } catch (error) {
       return apiResponse.CATCH_ERROR({ res, message: error.message })
     }
@@ -116,4 +326,4 @@ const updateCart = {
 
 }
 
-module.exports = { createOrder, getCart, deleteCart, updateCart }
+module.exports = { createOrder, getOrderForUser, getOrderForVendor, getOrderForSuperAdmin, deleteCart, updateCart }

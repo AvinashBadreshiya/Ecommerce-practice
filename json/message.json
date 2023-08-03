@@ -26,5 +26,6 @@
   "CART_PRODUCT_DELETED": "Cart product deleted successfully",
   "CART_EXISTS": "Cart product exists",
   "INSUFFICIENT_QUANTITY": "Insufficient quantity",
-  "CART_UPDATED": "Cart product updated successfully"
+  "CART_UPDATED": "Cart product updated successfully",
+  "ORDER_SUCCESS":"Your order has been successfully placed"
 }

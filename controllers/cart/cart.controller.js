@@ -10,10 +10,7 @@ const addToCart = {
   validate: validator({
     body: Joi.object({
       cart: Joi.object({
-        productId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid Id").required(),
-        vendorId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid Id").required(),
-        quantity: Joi.number().required(),
-        totalPrice: Joi.number().required(),
+        productId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid Id").required()
       }),
     })
   }),
@@ -24,6 +21,9 @@ const addToCart = {
       if (!getProduct) return apiResponse.BAD_REQUEST({ res, message: messages.PRODUCT_NOT_FOUND })
 
       req.body.userId = req.user._id
+      req.body.cart.totalPrice = getProduct.price
+      req.body.cart.vendorId = getProduct.vendorId
+      
       let newCart
       const getCart = await DB.CART.findOne({ userId: req.body.userId })
       if (getCart) {
@@ -97,13 +97,12 @@ const deleteCart = {
 
   handler: async (req, res) => {
     try {
-      console.log(req.user._id);
       if (req.query?.emptyCart && req.query.emptyCart === "true") {
         await DB.CART.deleteMany({ userId: req.user._id })
         return apiResponse.OK({ res, message: messages.CART_REMOVE });
       } else {
-        if (!await DB.CART.findById(req.query?.cartId)) return apiResponse.BAD_REQUEST({ res, message: messages.CART_NOT_FOUND });
-        await DB.CART.findByIdAndDelete(req.query?.cartId)
+        if (!await DB.CART.findOne({ 'cart._id': req.query?.cartId }, { 'cart.$': 1 })) return apiResponse.BAD_REQUEST({ res, message: messages.CART_NOT_FOUND });
+        await DB.CART.findOneAndDelete({ "cart._id": req.query?.cartId })
         return apiResponse.OK({ res, message: messages.CART_PRODUCT_DELETED });
       }
     } catch (error) {
@@ -116,7 +115,6 @@ const updateCart = {
 
   validate: validator({
     query: Joi.object({
-      // _id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid ID").required(),
       cartId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid cartID").required(),
       isIncrement: Joi.string().valid("true", "false").required()
     })
@@ -124,25 +122,37 @@ const updateCart = {
 
   handler: async (req, res) => {
     try {
-      const getUserCart = await DB.CART.findOne({ "cart._id": req.query.cartId, userId: req.user._id })
-      console.log(getUserCart);
-      // if (!getUserCart) return apiResponse.BAD_REQUEST({ res, message: messages.CART_NOT_FOUND })
-      // const getProduct = await DB.PRODUCT.findById(getUserCart.productId)
-      // if (!getProduct) return apiResponse.BAD_REQUEST({ res, message: messages.PRODUCT_NOT_FOUND })
+      const getUserCart = await DB.CART.findOne({ 'cart._id': req.query.cartId }, { 'cart.$': 1 })
+      if (!getUserCart) return apiResponse.BAD_REQUEST({ res, message: messages.CART_NOT_FOUND })
+      const cartProduct = getUserCart.cart[0]
+      const getProduct = await DB.PRODUCT.findById(cartProduct.productId)
+      if (!getProduct) return apiResponse.BAD_REQUEST({ res, message: messages.PRODUCT_NOT_FOUND })
 
-      // if (req.query.isIncrement === "true") {
-      //   if (getProduct.stock < parseInt(getUserCart.quantity + 1)) return apiResponse.BAD_REQUEST({ res, message: messages.INSUFFICIENT_QUANTITY })
-      //   await DB.CART.findByIdAndUpdate(req.query.cartId, { $inc: { quantity: 1 } })
-      //   return apiResponse.OK({ res, message: messages.CART_UPDATED })
-      // } else if (req.query.isIncrement === "false") {
-      //   if (parseInt(getUserCart.quantity - 1) === 0) {
-      //     await DB.CART.findByIdAndDelete(req.query.cartId)
-      //     return apiResponse.OK({ res, message: messages.CART_PRODUCT_DELETED })
-      //   } else if (parseInt(getUserCart.quantity - 1) > 0) {
-      //     await DB.CART.findByIdAndUpdate(req.query.cartId, { $inc: { quantity: -1 } })
-      //     return apiResponse.OK({ res, message: messages.CART_UPDATED })
-      //   }
-      // }
+      if (req.query.isIncrement === "true") {
+        if (getProduct.stock < parseInt(cartProduct.quantity + 1)) return apiResponse.BAD_REQUEST({ res, message: messages.INSUFFICIENT_QUANTITY })
+        await DB.CART.findOneAndUpdate(
+          { "cart._id": req.query.cartId },
+          { $set: { "cart.$.totalPrice": parseFloat((cartProduct.quantity + 1) * getProduct.price) }, $inc: { "cart.$.quantity": 1 } }
+        )
+        return apiResponse.OK({ res, message: messages.CART_UPDATED })
+      } else if (req.query.isIncrement === "false") {
+        if (parseInt(cartProduct.quantity - 1) === 0) {
+          const deleteProduct = await DB.CART.findOneAndUpdate(
+            { "cart._id": req.query.cartId },
+            { $pull: { cart: { _id: req.query.cartId } } },
+            { new: true }
+          )
+          if (deleteProduct.cart.length > 0) return apiResponse.OK({ res, message: messages.CART_PRODUCT_DELETED })
+          await DB.CART.findOneAndDelete({ userId: req.user._id })
+          return apiResponse.OK({ res, message: messages.CART_REMOVE })
+        } else if (parseInt(cartProduct.quantity - 1) > 0) {
+          await DB.CART.findOneAndUpdate(
+            { "cart._id": req.query.cartId },
+            { $set: { "cart.$.totalPrice": parseFloat((cartProduct.quantity - 1) * getProduct.price) }, $inc: { "cart.$.quantity": -1 } }
+          )
+          return apiResponse.OK({ res, message: messages.CART_UPDATED })
+        }
+      }
     } catch (error) {
       return apiResponse.CATCH_ERROR({ res, message: error.message })
     }
